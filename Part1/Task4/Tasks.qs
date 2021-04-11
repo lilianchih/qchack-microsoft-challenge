@@ -37,13 +37,64 @@ namespace QCHack.Task4 {
     // Hint: Remember that you can examine the inputs and the intermediary results of your computations
     //       using Message function for classical values and DumpMachine for quantum states.
     //
+    operation ValidTriangle (inputs : Qubit[], output : Qubit) : Unit is Adj+Ctl {
+        Controlled X(inputs[0..0], inputs[1]);
+        Controlled X(inputs[0..0], inputs[2]);
+        
+        X(inputs[1]);
+        X(inputs[2]);
+        Controlled X(inputs[1..2], output);
+        X(inputs[1]);
+        X(inputs[2]);
+        Controlled X(inputs[0..0], inputs[1]);
+        Controlled X(inputs[0..0], inputs[2]);
+        X(output);
+    }
+    
+    function triplet(edges : (Int, Int)[]) : (Int, Int, Int)[] {
+        mutable cnt = 0;
+        let n = Length(edges);
+        mutable t = new (Int, Int, Int)[n];
+        for i in 0..n-1 {
+            let (i1, i2) = edges[i];
+            for j in i+1..n-1 {
+                let (j1, j2) = edges[j];
+                if (i1==j1 or i2==j1 or i1==j2 or i2==j2){
+                    for k in j+1..n-1 {
+                        let (k1, k2) = edges[k];
+                        let b1 = (k1==i2 and k2==j2)or(k1==i1 and k2==j2)or(k1==i2 and k2==j1)or(k1==i1 and k2==j1);
+                        let b2 = (k2==i2 and k1==j2)or(k2==i1 and k1==j2)or(k2==i2 and k1==j1)or(k2==i1 and k1==j1);
+                        if (b1 or b2){
+                            //Message($"{i}, {j}, {k}");
+                            set t w/= cnt <- (i, j, k);
+                            set cnt += 1;
+                        
+                        }
+                    }
+                }
+                
+            }
+        }
+        let ret = t[0..cnt-1];
+        return ret;
+    }
     operation Task4_TriangleFreeColoringOracle (
         V : Int, 
         edges : (Int, Int)[], 
         colorsRegister : Qubit[], 
         target : Qubit
     ) : Unit is Adj+Ctl {
-        // ...
+        let t = triplet(edges);
+        use ancillas = Qubit[Length(t)];
+        for c in 0..Length(t)-1 {
+            let (i, j, k) = t[c];
+            ValidTriangle([colorsRegister[i],colorsRegister[j],colorsRegister[k]], ancillas[c]);
+        }
+        Controlled X(ancillas, target);
+        for c in 0..Length(t)-1 {
+            let (i, j, k) = t[c];
+            ValidTriangle([colorsRegister[i],colorsRegister[j],colorsRegister[k]], ancillas[c]);
+        }
     }
 }
 
